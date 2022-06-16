@@ -1,10 +1,12 @@
 // ignore_for_file: unused_import
 
+import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:example/pallete.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_painter/flutter_painter.dart';
+import 'package:path_provider/path_provider.dart';
 
 import 'dart:ui' as ui;
 
@@ -157,80 +159,80 @@ class _FlutterPainterExampleState extends State<FlutterPainterExample> {
           preferredSize: const Size(double.infinity, kToolbarHeight),
           // Listen to the controller and update the UI when it updates.
           child: ValueListenableBuilder<PainterControllerValue>(
-              valueListenable: controller,
-              child: const Text("SpeEdLabs"),
-              builder: (context, _, child) {
-                return AppBar(
-                  title: child,
-                  actions: [
-                    // Delete the selected drawable
-                    IconButton(
-                      icon: const Icon(
-                        PhosphorIcons.trash,
-                      ),
-                      onPressed: controller.selectedObjectDrawable == null
-                          ? null
-                          : removeSelectedDrawable,
+            valueListenable: controller,
+            child: const Text("SpeEdLabs"),
+            builder: (context, _, child) {
+              return AppBar(
+                title: child,
+                actions: [
+                  // Delete the selected drawable
+                  IconButton(
+                    icon: const Icon(
+                      PhosphorIcons.trash,
                     ),
-                    // Delete the selected drawable
-                    IconButton(
-                      icon: const Icon(
-                        Icons.flip,
-                      ),
-                      onPressed: controller.selectedObjectDrawable != null &&
-                              controller.selectedObjectDrawable is ImageDrawable
-                          ? flipSelectedImageDrawable
-                          : null,
+                    onPressed: controller.selectedObjectDrawable == null
+                        ? null
+                        : removeSelectedDrawable,
+                  ),
+                  IconButton(
+                    icon: const Icon(
+                      PhosphorIcons.x,
                     ),
-                    // Redo action
-                    IconButton(
-                      icon: const Icon(
-                        PhosphorIcons.arrowClockwise,
-                      ),
-                      onPressed: controller.canRedo ? redo : null,
+                    onPressed: (controller.canRedo || controller.canUndo)
+                        ? clearSelectedDrawable
+                        : null,
+                  ),
+                  // Flip the selected drawable
+                  IconButton(
+                    icon: const Icon(
+                      Icons.flip,
                     ),
-                    // Undo action
-                    IconButton(
-                      icon: const Icon(
-                        PhosphorIcons.arrowCounterClockwise,
-                      ),
-                      onPressed: controller.canUndo ? undo : null,
+                    onPressed: controller.selectedObjectDrawable != null &&
+                            controller.selectedObjectDrawable is ImageDrawable
+                        ? flipSelectedImageDrawable
+                        : null,
+                  ),
+                  // Redo action
+                  IconButton(
+                    icon: const Icon(
+                      PhosphorIcons.arrowClockwise,
                     ),
-                    IconButton(
-                      onPressed: () {
-                        setState(() {
-                          if (ind > 0) {
-                            ind--;
-                            initBackground();
-                            // print(ind);
-                          }
-                        });
-                      },
-                      icon: const Icon(Icons.arrow_back_ios_new_rounded),
+                    onPressed: controller.canRedo ? redo : null,
+                  ),
+                  // Undo action
+                  IconButton(
+                    icon: const Icon(
+                      PhosphorIcons.arrowCounterClockwise,
                     ),
-                    IconButton(
-                      onPressed: () {
-                        setState(() {
-                          if (ind < imageList.length - 1) {
-                            ind++;
-                            initBackground();
-                            // print(ind);
-                          }
-                        });
-                      },
-                      icon: const Icon(Icons.arrow_forward_ios_rounded),
-                    ),
-                  ],
-                );
-              }),
-        ),
-        // Generate image
-        floatingActionButton: FloatingActionButton(
-          child: const Icon(
-            PhosphorIcons.imageFill,
+                    onPressed: controller.canUndo ? undo : null,
+                  ),
+                  IconButton(
+                    onPressed: (imageList.length > 1 && ind != 0)
+                        ? backwardButton
+                        : null,
+                    icon: const Icon(Icons.arrow_back_ios_new_rounded),
+                  ),
+                  IconButton(
+                    onPressed:
+                        (imageList.length > 1 && ind != imageList.length - 1)
+                            ? forwardbutton
+                            : null,
+                    icon: const Icon(Icons.arrow_forward_ios_rounded),
+                  ),
+                ],
+              );
+            },
           ),
-          onPressed: renderAndDisplayImage,
         ),
+
+        /// Generate image
+
+        // floatingActionButton: FloatingActionButton(
+        //   child: const Icon(
+        //     PhosphorIcons.imageFill,
+        //   ),
+        //   onPressed: renderAndDisplayImage,
+        // ),
         body: Stack(
           children: [
             if (backgroundImage != null)
@@ -245,6 +247,19 @@ class _FlutterPainterExampleState extends State<FlutterPainterExample> {
                   ),
                 ),
               ),
+            Positioned(
+              top: 106,
+              left: 16,
+              child: Column(
+                children: [
+                  _buildLeftToolbar(context),
+                  const Divider(
+                    height: 32,
+                  ),
+                  // _buildStrokeToolbar(context),
+                ],
+              ),
+            ),
             Positioned(
               bottom: 0,
               right: 0,
@@ -292,7 +307,7 @@ class _FlutterPainterExampleState extends State<FlutterPainterExample> {
                                 Row(
                                   children: [
                                     const Expanded(
-                                        flex: 1, child: Text("Color")),
+                                        flex: 1, child: Text("Pen Color")),
                                     // Control free style color hue
                                     Expanded(
                                       flex: 3,
@@ -305,6 +320,28 @@ class _FlutterPainterExampleState extends State<FlutterPainterExample> {
                                           activeColor:
                                               controller.freeStyleColor,
                                           onChanged: setFreeStyleColor),
+                                    ),
+                                  ],
+                                ),
+                              if (controller.freeStyleMode ==
+                                  FreeStyleMode.highlight)
+                                Row(
+                                  children: [
+                                    const Expanded(
+                                        flex: 1,
+                                        child: Text("Highlighter Color")),
+                                    // Control free style color hue
+                                    Expanded(
+                                      flex: 3,
+                                      child: Slider.adaptive(
+                                          min: 0,
+                                          max: 359.99,
+                                          value: HSVColor.fromColor(
+                                                  controller.freeStyleColor)
+                                              .hue,
+                                          activeColor:
+                                              controller.freeStyleColor,
+                                          onChanged: setHighlightColor),
                                     ),
                                   ],
                                 ),
@@ -360,18 +397,19 @@ class _FlutterPainterExampleState extends State<FlutterPainterExample> {
                                   Expanded(
                                     flex: 3,
                                     child: Slider.adaptive(
-                                        min: 2,
-                                        max: 25,
-                                        value: controller
-                                                .shapePaint?.strokeWidth ??
-                                            shapePaint.strokeWidth,
-                                        onChanged: (value) =>
-                                            setShapeFactoryPaint(
-                                                (controller.shapePaint ??
-                                                        shapePaint)
-                                                    .copyWith(
-                                              strokeWidth: value,
-                                            ))),
+                                      min: 2,
+                                      max: 25,
+                                      value:
+                                          controller.shapePaint?.strokeWidth ??
+                                              shapePaint.strokeWidth,
+                                      onChanged: (value) =>
+                                          setShapeFactoryPaint(
+                                        (controller.shapePaint ?? shapePaint)
+                                            .copyWith(
+                                          strokeWidth: value,
+                                        ),
+                                      ),
+                                    ),
                                   ),
                                 ],
                               ),
@@ -383,25 +421,24 @@ class _FlutterPainterExampleState extends State<FlutterPainterExample> {
                                   Expanded(
                                     flex: 3,
                                     child: Slider.adaptive(
-                                        min: 0,
-                                        max: 359.99,
-                                        value: HSVColor.fromColor(
-                                                (controller.shapePaint ??
-                                                        shapePaint)
-                                                    .color)
-                                            .hue,
-                                        activeColor: (controller.shapePaint ??
-                                                shapePaint)
-                                            .color,
-                                        onChanged: (hue) =>
-                                            setShapeFactoryPaint(
-                                                (controller.shapePaint ??
-                                                        shapePaint)
-                                                    .copyWith(
-                                              color: HSVColor.fromAHSV(
-                                                      1, hue, 1, 1)
-                                                  .toColor(),
-                                            ))),
+                                      min: 0,
+                                      max: 359.99,
+                                      value: HSVColor.fromColor(
+                                              (controller.shapePaint ??
+                                                      shapePaint)
+                                                  .color)
+                                          .hue,
+                                      activeColor:
+                                          (controller.shapePaint ?? shapePaint)
+                                              .color,
+                                      onChanged: (hue) => setShapeFactoryPaint(
+                                        (controller.shapePaint ?? shapePaint)
+                                            .copyWith(
+                                          color: HSVColor.fromAHSV(1, hue, 1, 1)
+                                              .toColor(),
+                                        ),
+                                      ),
+                                    ),
                                   ),
                                 ],
                               ),
@@ -414,24 +451,25 @@ class _FlutterPainterExampleState extends State<FlutterPainterExample> {
                                     flex: 3,
                                     child: Center(
                                       child: Switch(
-                                          value: (controller.shapePaint ??
-                                                      shapePaint)
-                                                  .style ==
-                                              PaintingStyle.fill,
-                                          onChanged: (value) =>
-                                              setShapeFactoryPaint(
-                                                  (controller.shapePaint ??
-                                                          shapePaint)
-                                                      .copyWith(
-                                                style: value
-                                                    ? PaintingStyle.fill
-                                                    : PaintingStyle.stroke,
-                                              ))),
+                                        value: (controller.shapePaint ??
+                                                    shapePaint)
+                                                .style ==
+                                            PaintingStyle.fill,
+                                        onChanged: (value) =>
+                                            setShapeFactoryPaint(
+                                          (controller.shapePaint ?? shapePaint)
+                                              .copyWith(
+                                            style: value
+                                                ? PaintingStyle.fill
+                                                : PaintingStyle.stroke,
+                                          ),
+                                        ),
+                                      ),
                                     ),
                                   ),
                                 ],
                               ),
-                            ]
+                            ],
                           ],
                         ),
                       ),
@@ -466,6 +504,16 @@ class _FlutterPainterExampleState extends State<FlutterPainterExample> {
                       : null,
                 ),
                 onPressed: toggleFreeStyleDraw,
+              ),
+              // Highlighter
+              IconButton(
+                icon: Icon(
+                  PhosphorIcons.highlighterCircle,
+                  color: controller.freeStyleMode == FreeStyleMode.highlight
+                      ? Theme.of(context).colorScheme.secondary
+                      : null,
+                ),
+                onPressed: toggleFreeStyleHighlight,
               ),
               // Add text
               IconButton(
@@ -557,10 +605,181 @@ class _FlutterPainterExampleState extends State<FlutterPainterExample> {
     controller.redo();
   }
 
+  Widget _buildLeftToolbar(BuildContext context) {
+    return ValueListenableBuilder<PainterControllerValue>(
+      valueListenable: controller,
+      builder: (context, _, child) => Column(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        mainAxisAlignment: MainAxisAlignment.start,
+        children: [
+          _buildForwardButton(context),
+          const Divider(
+            height: 4.0,
+          ),
+          _buildBackwardButton(context),
+          const Divider(
+            height: 4.0,
+          ),
+          _buildUndoButton(context),
+          const Divider(
+            height: 4.0,
+          ),
+          _buildRedoButton(context),
+          const Divider(
+            height: 4.0,
+          ),
+          _buildClearButton(context),
+          const Divider(
+            height: 4.0,
+          ),
+          _buildFlipButton(context),
+          const Divider(
+            height: 4.0,
+          ),
+          _buildDeleteButton(context),
+          const Divider(
+            height: 4.0,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildUndoButton(BuildContext context) {
+    return ValueListenableBuilder<PainterControllerValue>(
+      valueListenable: controller,
+      builder: (context, _, child) => FloatingActionButton.small(
+        tooltip: "Undo",
+        onPressed: controller.canUndo ? undo : null,
+        disabledElevation: 0,
+        backgroundColor: controller.canUndo ? Colors.blueGrey : Colors.grey,
+        child: const Icon(
+          PhosphorIcons.arrowCounterClockwise,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildRedoButton(BuildContext context) {
+    return ValueListenableBuilder<PainterControllerValue>(
+      valueListenable: controller,
+      builder: (context, _, child) => FloatingActionButton.small(
+        tooltip: "Redo",
+        onPressed: controller.canRedo ? redo : null,
+        disabledElevation: 0,
+        backgroundColor: controller.canRedo ? Colors.blueGrey : Colors.grey,
+        child: const Icon(
+          PhosphorIcons.arrowClockwise,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildClearButton(BuildContext context) {
+    return ValueListenableBuilder<PainterControllerValue>(
+      valueListenable: controller,
+      builder: (context, _, child) => FloatingActionButton.small(
+        tooltip: "Redo",
+        onPressed: (controller.canRedo || controller.canUndo)
+            ? clearSelectedDrawable
+            : null,
+        disabledElevation: 0,
+        backgroundColor: (controller.canRedo || controller.canUndo)
+            ? Colors.blueGrey
+            : Colors.grey,
+        child: const Icon(
+          PhosphorIcons.x,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFlipButton(BuildContext context) {
+    return ValueListenableBuilder<PainterControllerValue>(
+      valueListenable: controller,
+      builder: (context, _, child) => FloatingActionButton.small(
+        tooltip: "Redo",
+        onPressed: controller.selectedObjectDrawable != null &&
+                controller.selectedObjectDrawable is ImageDrawable
+            ? flipSelectedImageDrawable
+            : null,
+        disabledElevation: 0,
+        backgroundColor: controller.selectedObjectDrawable != null &&
+                controller.selectedObjectDrawable is ImageDrawable
+            ? Colors.blueGrey
+            : Colors.grey,
+        child: const Icon(
+          Icons.flip,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDeleteButton(BuildContext context) {
+    return ValueListenableBuilder<PainterControllerValue>(
+      valueListenable: controller,
+      builder: (context, _, child) => FloatingActionButton.small(
+        tooltip: "Redo",
+        onPressed: controller.selectedObjectDrawable == null
+            ? null
+            : removeSelectedDrawable,
+        disabledElevation: 0,
+        backgroundColor: controller.selectedObjectDrawable != null
+            ? Colors.blueGrey
+            : Colors.grey,
+        child: const Icon(
+          PhosphorIcons.trash,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildForwardButton(BuildContext context) {
+    return ValueListenableBuilder<PainterControllerValue>(
+      valueListenable: controller,
+      builder: (context, _, child) => FloatingActionButton.small(
+        tooltip: "Redo",
+        onPressed: (imageList.length > 1 && ind != imageList.length - 1)
+            ? forwardbutton
+            : null,
+        disabledElevation: 0,
+        backgroundColor: (imageList.length > 1 && ind != imageList.length - 1)
+            ? Colors.blueGrey
+            : Colors.grey,
+        child: const Icon(
+          Icons.arrow_forward_ios_rounded,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildBackwardButton(BuildContext context) {
+    return ValueListenableBuilder<PainterControllerValue>(
+      valueListenable: controller,
+      builder: (context, _, child) => FloatingActionButton.small(
+        tooltip: "Redo",
+        onPressed: (imageList.length > 1 && ind != 0) ? backwardButton : null,
+        disabledElevation: 0,
+        backgroundColor:
+            (imageList.length > 1 && ind != 0) ? Colors.blueGrey : Colors.grey,
+        child: const Icon(
+          Icons.arrow_back_ios_new_rounded,
+        ),
+      ),
+    );
+  }
+
   void toggleFreeStyleDraw() {
     controller.freeStyleMode = controller.freeStyleMode != FreeStyleMode.draw
         ? FreeStyleMode.draw
         : FreeStyleMode.none;
+  }
+
+  void toggleFreeStyleHighlight() {
+    controller.freeStyleMode =
+        controller.freeStyleMode != FreeStyleMode.highlight
+            ? FreeStyleMode.highlight
+            : FreeStyleMode.none;
   }
 
   void toggleFreeStyleErase() {
@@ -595,6 +814,10 @@ class _FlutterPainterExampleState extends State<FlutterPainterExample> {
     controller.freeStyleColor = HSVColor.fromAHSV(1, hue, 1, 1).toColor();
   }
 
+  void setHighlightColor(double hue) {
+    controller.freeStyleColor = HSVColor.fromAHSV(0.4, hue, 1, 1).toColor();
+  }
+
   void setTextFontSize(double size) {
     // Set state is just to update the current UI, the [FlutterPainter] UI updates without it
     setState(() {
@@ -618,6 +841,30 @@ class _FlutterPainterExampleState extends State<FlutterPainterExample> {
 
   void selectShape(ShapeFactory? factory) {
     controller.shapeFactory = factory;
+  }
+
+  void forwardbutton() {
+    setState(() {
+      if (ind < imageList.length - 1) {
+        ind++;
+        // renderAndSaveImage();
+        clearPageDrawable();
+        initBackground();
+        // print(ind);
+      }
+    });
+  }
+
+  void backwardButton() {
+    setState(() {
+      if (ind > 0) {
+        ind--;
+        // renderAndSaveImage();
+        clearPageDrawable();
+        initBackground();
+        // print(ind);
+      }
+    });
   }
 
   void renderAndDisplayImage() {
@@ -645,9 +892,35 @@ class _FlutterPainterExampleState extends State<FlutterPainterExample> {
         builder: (context) => RenderedImageDialog(imageFuture: imageFuture));
   }
 
+  void renderAndSaveImage() async {
+    if (backgroundImage == null) return;
+    final backgroundImageSize = Size(
+        backgroundImage!.width.toDouble(), backgroundImage!.height.toDouble());
+
+    // Render the image
+    // Returns a [ui.Image] object, convert to to byte data and then to Uint8List
+    final image = await controller.renderImage(backgroundImageSize);
+    final byteData = await image.pngBytes;
+
+    if (byteData == null) return;
+
+    // Save image to the External Storage directory.
+    final file = File('${(await getExternalStorageDirectory())?.path}/img.png');
+    await file.writeAsBytes(byteData.buffer
+        .asUint8List(byteData.offsetInBytes, byteData.lengthInBytes));
+  }
+
   void removeSelectedDrawable() {
     final selectedDrawable = controller.selectedObjectDrawable;
     if (selectedDrawable != null) controller.removeDrawable(selectedDrawable);
+  }
+
+  void clearSelectedDrawable() {
+    controller.clearDrawables();
+  }
+
+  void clearPageDrawable() {
+    controller.clearPage();
   }
 
   void flipSelectedImageDrawable() {

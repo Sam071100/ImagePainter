@@ -67,6 +67,15 @@ class _FreeStyleWidgetState extends State<_FreeStyleWidget> {
 
       // Add the drawable to the controller's drawables
       PainterController.of(context).addDrawables([drawable]);
+    } else if (settings.mode == FreeStyleMode.highlight) {
+      drawable = HighlightDrawable(
+        path: [_globalToLocal(globalPosition)],
+        color: settings.color,
+        strokeWidth: settings.strokeWidth,
+      );
+
+      // Add the drawable to the controller's drawables
+      PainterController.of(context).addDrawables([drawable]);
     } else if (settings.mode == FreeStyleMode.erase) {
       drawable = EraseDrawable(
         path: [_globalToLocal(globalPosition)],

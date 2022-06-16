@@ -201,6 +201,16 @@ class PainterController extends ValueNotifier<PainterControllerValue> {
     _addAction(action, newAction);
   }
 
+  /// Removes all the drawables from the controller value.
+  /// and empties the performedActions and unperformedActions stack.
+  /// This function is called when we want to go to next page or the previous page.
+  void clearPage() {
+    final action = ClearDrawablesAction();
+    action.perform(this);
+    performedActions.clear();
+    unperformedActions.clear();
+  }
+
   /// Groups all drawables in the controller into one drawable.
   ///
   /// This is used when an erase drawable is added, to prevent modifications to previous drawables.
